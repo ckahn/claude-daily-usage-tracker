@@ -1,0 +1,167 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Claude Daily Usage Tracker</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, sans-serif;
+      background: #0f0f0f;
+      color: #f0f0f0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+    .container { width: 100%; max-width: 480px; }
+    h1 { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.25rem; }
+    .subtitle { font-size: 0.85rem; color: #888; margin-bottom: 1.5rem; }
+    .subtitle .label { color: #777; }
+    .subtitle .value { color: #e5e5e5; font-weight: 500; }
+    input[type=number] {
+      width: 100%;
+      padding: 0.75rem;
+      border-radius: 0.5rem;
+      border: 1px solid #333;
+      background: #1a1a1a;
+      color: #f0f0f0;
+      font-size: 1rem;
+      outline: none;
+      -moz-appearance: textfield;
+      appearance: textfield;
+    }
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    input.error { border-color: #f87171; }
+    .error-msg { margin-top: 0.4rem; color: #f87171; font-size: 0.85rem; }
+    .result {
+      margin-top: 1.5rem;
+      padding: 1.5rem;
+      border-radius: 0.75rem;
+      text-align: center;
+      display: none;
+    }
+    .result.visible { display: block; }
+    .big { font-size: 3.5rem; font-weight: 800; line-height: 1; }
+    .label { margin-top: 0.5rem; font-size: 1rem; color: #aaa; }
+    .meta { margin-top: 1rem; font-size: 0.8rem; color: #666; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Claude Daily Usage Tracker</h1>
+    <p class="subtitle" id="subtitle">
+  <span class="label">Daily allocation:</span>
+  <span class="value" id="dailyLabel"></span>
+  ·
+  <span class="label">Now:</span>
+  <span class="value" id="nowLabel"></span>
+</p>
+    <input type="number" inputmode="decimal" placeholder="Enter usage (e.g. 20)" id="input" autofocus />
+    <p class="error-msg" id="error" style="display:none">Please enter a number, e.g. 20 or 20%</p>
+    <div class="result" id="result">
+      <div class="big" id="pct"></div>
+      <div class="label" id="lbl"></div>
+      <div class="meta" id="meta"></div>
+      <div class="meta" id="reset"></div>
+    </div>
+  </div>
+
+  <script>
+    const DAILY = 100 / 7;
+
+    function chunkIndex() {
+      const now = new Date();
+      const fridayMins = 5 * 24 * 60 + 14 * 60;
+      const nowMins = now.getDay() * 24 * 60 + now.getHours() * 60 + now.getMinutes();
+      let elapsed = nowMins - fridayMins;
+      if (elapsed < 0) elapsed += 7 * 24 * 60;
+      return Math.floor(elapsed / (24 * 60));
+    }
+
+    function dayLabel() {
+      const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+      const now = new Date();
+      return days[now.getDay()] + " " + now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    }
+
+    function timeUntilDailyReset() {
+      const now = new Date();
+      const reset = new Date(now);
+      reset.setHours(14, 0, 0, 0);
+
+      if (now >= reset) {
+        reset.setDate(reset.getDate() + 1);
+      }
+
+      const diffMs = reset - now;
+
+      const totalMinutes = Math.floor(diffMs / (1000 * 60));
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = totalMinutes % 60;
+
+      return { hours, minutes };
+    }
+
+    document.getElementById("dailyLabel").textContent = "14.3%";
+document.getElementById("nowLabel").textContent = dayLabel();
+
+    const inp = document.getElementById("input");
+    const errEl = document.getElementById("error");
+    const resultEl = document.getElementById("result");
+    const pctEl = document.getElementById("pct");
+    const lblEl = document.getElementById("lbl");
+    const metaEl = document.getElementById("meta");
+    const resetEl = document.getElementById("reset");
+
+    inp.addEventListener("input", () => {
+      const raw = inp.value.trim();
+
+      if (raw === "") {
+        inp.classList.remove("error");
+        errEl.style.display = "none";
+        resultEl.classList.remove("visible");
+        resetEl.textContent = "";
+        return;
+      }
+
+      const usage = parseFloat(raw);
+      if (isNaN(usage)) {
+        inp.classList.add("error");
+        errEl.style.display = "block";
+        resultEl.classList.remove("visible");
+        resetEl.textContent = "";
+        return;
+      }
+
+      inp.classList.remove("error");
+      errEl.style.display = "none";
+
+      const idx = chunkIndex();
+      const usedToday = usage - idx * DAILY;
+      const remaining = Math.round((100 - (usedToday / DAILY * 100)) * 10) / 10;
+      const over = remaining < 0;
+      const color = remaining > 50 ? "#4ade80" : remaining > 0 ? "#facc15" : "#f87171";
+
+      pctEl.textContent = Math.abs(remaining) + "%";
+      pctEl.style.color = color;
+      lblEl.textContent = over ? "over today's budget" : "of today's budget remaining";
+      metaEl.textContent = `Day ${idx + 1} of 7 · ${usedToday.toFixed(2)}% used this cycle`;
+      const t = timeUntilDailyReset();
+      const hLabel = t.hours === 1 ? "hour" : "hours";
+      const mLabel = t.minutes === 1 ? "minute" : "minutes";
+      resetEl.textContent = `${t.hours} ${hLabel} and ${t.minutes} ${mLabel} until daily reset`;
+      resultEl.style.border = `1px solid ${color}44`;
+      resultEl.style.background = `${color}11`;
+      resultEl.classList.add("visible");
+    });
+  </script>
+</body>
+</html>
