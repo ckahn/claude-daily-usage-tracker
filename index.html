@@ -76,9 +76,11 @@
 
   <script>
     const DAILY = 100 / 7;
+    const state = {
+      currentTime: new Date()
+    };
 
-    function chunkIndex() {
-      const now = new Date();
+    function chunkIndex(now = state.currentTime) {
       const fridayMins = 5 * 24 * 60 + 14 * 60;
       const nowMins = now.getDay() * 24 * 60 + now.getHours() * 60 + now.getMinutes();
       let elapsed = nowMins - fridayMins;
@@ -86,14 +88,12 @@
       return Math.floor(elapsed / (24 * 60));
     }
 
-    function dayLabel() {
+    function dayLabel(now = state.currentTime) {
       const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-      const now = new Date();
       return days[now.getDay()] + " " + now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     }
 
-    function timeUntilDailyReset() {
-      const now = new Date();
+    function timeUntilDailyReset(now = state.currentTime) {
       const reset = new Date(now);
       reset.setHours(14, 0, 0, 0);
 
@@ -110,8 +110,13 @@
       return { hours, minutes };
     }
 
+    function syncCurrentTime() {
+      state.currentTime = new Date();
+      document.getElementById("nowLabel").textContent = dayLabel(state.currentTime);
+    }
+
     document.getElementById("dailyLabel").textContent = "14.3%";
-document.getElementById("nowLabel").textContent = dayLabel();
+    syncCurrentTime();
 
     const inp = document.getElementById("input");
     const errEl = document.getElementById("error");
@@ -122,6 +127,7 @@ document.getElementById("nowLabel").textContent = dayLabel();
     const resetEl = document.getElementById("reset");
 
     inp.addEventListener("input", () => {
+      syncCurrentTime();
       const raw = inp.value.trim();
 
       if (raw === "") {
@@ -144,7 +150,7 @@ document.getElementById("nowLabel").textContent = dayLabel();
       inp.classList.remove("error");
       errEl.style.display = "none";
 
-      const idx = chunkIndex();
+      const idx = chunkIndex(state.currentTime);
       const usedToday = usage - idx * DAILY;
       const remaining = Math.round((100 - (usedToday / DAILY * 100)) * 10) / 10;
       const over = remaining < 0;
@@ -154,7 +160,7 @@ document.getElementById("nowLabel").textContent = dayLabel();
       pctEl.style.color = color;
       lblEl.textContent = over ? "over today's budget" : "of today's budget remaining";
       metaEl.textContent = `Day ${idx + 1} of 7 · ${usedToday.toFixed(2)}% used this cycle`;
-      const t = timeUntilDailyReset();
+      const t = timeUntilDailyReset(state.currentTime);
       const hLabel = t.hours === 1 ? "hour" : "hours";
       const mLabel = t.minutes === 1 ? "minute" : "minutes";
       resetEl.textContent = `${t.hours} ${hLabel} and ${t.minutes} ${mLabel} until daily reset`;
