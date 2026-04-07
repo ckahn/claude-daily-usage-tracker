@@ -52,6 +52,8 @@
     .big { font-size: 3.5rem; font-weight: 800; line-height: 1; }
     .label { margin-top: 0.5rem; font-size: 1rem; color: #aaa; }
     .meta { margin-top: 1rem; font-size: 0.8rem; color: #666; }
+    .target { margin-top: 0.75rem; font-size: 0.9rem; color: #cfcfcf; }
+    .target .value { color: #f0f0f0; font-weight: 700; }
   </style>
 </head>
 <body>
@@ -69,6 +71,7 @@
     <div class="result" id="result">
       <div class="big" id="pct"></div>
       <div class="label" id="lbl"></div>
+      <div class="target" id="target"></div>
       <div class="meta" id="meta"></div>
       <div class="meta" id="reset"></div>
     </div>
@@ -123,6 +126,7 @@
     const resultEl = document.getElementById("result");
     const pctEl = document.getElementById("pct");
     const lblEl = document.getElementById("lbl");
+    const targetEl = document.getElementById("target");
     const metaEl = document.getElementById("meta");
     const resetEl = document.getElementById("reset");
 
@@ -134,6 +138,7 @@
         inp.classList.remove("error");
         errEl.style.display = "none";
         resultEl.classList.remove("visible");
+        targetEl.innerHTML = "";
         resetEl.textContent = "";
         return;
       }
@@ -143,6 +148,7 @@
         inp.classList.add("error");
         errEl.style.display = "block";
         resultEl.classList.remove("visible");
+        targetEl.innerHTML = "";
         resetEl.textContent = "";
         return;
       }
@@ -153,12 +159,14 @@
       const idx = chunkIndex(state.currentTime);
       const usedToday = usage - idx * DAILY;
       const remaining = Math.round((100 - (usedToday / DAILY * 100)) * 10) / 10;
+      const targetUsage = ((idx + 0.9) * DAILY).toFixed(1);
       const over = remaining < 0;
       const color = remaining > 50 ? "#4ade80" : remaining > 0 ? "#facc15" : "#f87171";
 
       pctEl.textContent = Math.abs(remaining) + "%";
       pctEl.style.color = color;
       lblEl.textContent = over ? "over today's budget" : "of today's budget remaining";
+      targetEl.innerHTML = `10% remaining happens at <span class="value">${targetUsage}%</span> weekly use`;
       metaEl.textContent = `Day ${idx + 1} of 7 · ${usedToday.toFixed(2)}% used this cycle`;
       const t = timeUntilDailyReset(state.currentTime);
       const hLabel = t.hours === 1 ? "hour" : "hours";
