@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Claude Daily Usage Tracker</title>
+  <title>AI Usage Tracker</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -22,6 +22,26 @@
     .subtitle { font-size: 0.85rem; color: #888; margin-bottom: 1.5rem; }
     .subtitle .label { color: #777; }
     .subtitle .value { color: #e5e5e5; font-weight: 500; }
+    .selector {
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+    .selector label {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.65rem 0.85rem;
+      border: 1px solid #333;
+      border-radius: 999px;
+      background: #171717;
+      color: #d4d4d4;
+      cursor: pointer;
+      font-size: 0.95rem;
+    }
+    .selector input[type=radio] {
+      accent-color: #f0f0f0;
+    }
     input[type=number] {
       width: 100%;
       padding: 0.75rem;
@@ -58,14 +78,24 @@
 </head>
 <body>
   <div class="container">
-    <h1>Claude Daily Usage Tracker</h1>
+    <h1>AI Usage Tracker</h1>
+    <div class="selector" id="productSelector">
+      <label>
+        <input type="radio" name="product" value="claude" checked />
+        Claude
+      </label>
+      <label>
+        <input type="radio" name="product" value="chatgpt" />
+        ChatGPT
+      </label>
+    </div>
     <p class="subtitle" id="subtitle">
-  <span class="label">Daily allocation:</span>
-  <span class="value" id="dailyLabel"></span>
-  ·
-  <span class="label">Now:</span>
-  <span class="value" id="nowLabel"></span>
-</p>
+      <span class="label">Daily allocation:</span>
+      <span class="value" id="dailyLabel"></span>
+      ·
+      <span class="label">Now:</span>
+      <span class="value" id="nowLabel"></span>
+    </p>
     <input type="number" inputmode="decimal" placeholder="Enter usage (e.g. 20)" id="input" autofocus />
     <p class="error-msg" id="error" style="display:none">Please enter a number, e.g. 20 or 20%</p>
     <div class="result" id="result">
@@ -78,16 +108,52 @@
 
   <script>
     const DAILY = 100 / 7;
+    const PRODUCTS = {
+      claude: {
+        name: "Claude",
+        weekResetDay: 5,
+        weekResetHour: 14,
+        weekResetMinute: 0,
+        dailyResetHour: 14,
+        dailyResetMinute: 0
+      },
+      chatgpt: {
+        name: "ChatGPT",
+        weekResetDay: 5,
+        weekResetHour: 0,
+        weekResetMinute: 0,
+        dailyResetHour: 0,
+        dailyResetMinute: 0
+      }
+    };
     const state = {
-      currentTime: new Date()
+      currentTime: new Date(),
+      product: "claude"
     };
 
+    function activeProduct() {
+      return PRODUCTS[state.product];
+    }
+
     function chunkIndex(now = state.currentTime) {
-      const fridayMins = 5 * 24 * 60 + 14 * 60;
+      const product = activeProduct();
+      const resetMins = product.weekResetDay * 24 * 60 + product.weekResetHour * 60 + product.weekResetMinute;
       const nowMins = now.getDay() * 24 * 60 + now.getHours() * 60 + now.getMinutes();
-      let elapsed = nowMins - fridayMins;
+      let elapsed = nowMins - resetMins;
       if (elapsed < 0) elapsed += 7 * 24 * 60;
       return Math.floor(elapsed / (24 * 60));
+    }
+
+    function currentDailyCycleStart(now = state.currentTime) {
+      const product = activeProduct();
+      const reset = new Date(now);
+      reset.setHours(product.dailyResetHour, product.dailyResetMinute, 0, 0);
+
+      if (now < reset) {
+        reset.setDate(reset.getDate() - 1);
+      }
+
+      return reset;
     }
 
     function dayLabel(now = state.currentTime) {
@@ -96,8 +162,9 @@
     }
 
     function timeUntilDailyReset(now = state.currentTime) {
+      const product = activeProduct();
       const reset = new Date(now);
-      reset.setHours(14, 0, 0, 0);
+      reset.setHours(product.dailyResetHour, product.dailyResetMinute, 0, 0);
 
       if (now >= reset) {
         reset.setDate(reset.getDate() + 1);
@@ -117,9 +184,6 @@
       document.getElementById("nowLabel").textContent = dayLabel(state.currentTime);
     }
 
-    document.getElementById("dailyLabel").textContent = "14.3%";
-    syncCurrentTime();
-
     const inp = document.getElementById("input");
     const errEl = document.getElementById("error");
     const resultEl = document.getElementById("result");
@@ -127,9 +191,12 @@
     const lblEl = document.getElementById("lbl");
     const targetEl = document.getElementById("target");
     const metaEl = document.getElementById("meta");
+    const dailyLabelEl = document.getElementById("dailyLabel");
 
-    inp.addEventListener("input", () => {
+    function render() {
       syncCurrentTime();
+      dailyLabelEl.textContent = `${DAILY.toFixed(1)}%`;
+
       const raw = inp.value.trim();
 
       if (raw === "") {
@@ -153,7 +220,9 @@
       errEl.style.display = "none";
 
       const idx = chunkIndex(state.currentTime);
-      const usedToday = usage - idx * DAILY;
+      const dayStart = currentDailyCycleStart(state.currentTime);
+      const dayIdx = chunkIndex(dayStart);
+      const usedToday = usage - dayIdx * DAILY;
       const remaining = Math.round((100 - (usedToday / DAILY * 100)) * 10) / 10;
       const targetUsage = ((idx + 0.9) * DAILY).toFixed(1);
       const over = remaining < 0;
@@ -172,7 +241,20 @@
       resultEl.style.border = `1px solid ${color}44`;
       resultEl.style.background = `${color}11`;
       resultEl.classList.add("visible");
+    }
+
+    inp.addEventListener("input", render);
+
+    document.querySelectorAll('input[name="product"]').forEach((radio) => {
+      radio.addEventListener("change", (event) => {
+        state.product = event.target.value;
+        document.title = `${activeProduct().name} Usage Tracker`;
+        render();
+      });
     });
+
+    document.title = `${activeProduct().name} Usage Tracker`;
+    render();
   </script>
 </body>
 </html>
