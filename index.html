@@ -17,30 +17,23 @@
       justify-content: center;
       padding: max(1rem, env(safe-area-inset-top)) 1rem 2rem;
     }
-    .container { width: 100%; max-width: 480px; padding-top: 1rem; }
+    .container { width: 100%; max-width: 560px; padding-top: 1rem; }
     h1 { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.25rem; }
-    .subtitle { font-size: 0.85rem; color: #888; margin-bottom: 1.5rem; }
-    .subtitle .label { color: #777; }
-    .subtitle .value { color: #e5e5e5; font-weight: 500; }
-    .selector {
-      display: flex;
-      gap: 0.75rem;
-      margin-bottom: 1rem;
+    .page-subtitle { font-size: 0.9rem; color: #8f8f8f; margin-bottom: 0.4rem; }
+    .shared-status { font-size: 0.85rem; color: #888; margin-bottom: 1.5rem; }
+    .shared-status .label { color: #777; }
+    .shared-status .value { color: #e5e5e5; font-weight: 500; }
+    .trackers { display: grid; gap: 1rem; }
+    .tracker {
+      border: 1px solid #2a2a2a;
+      border-radius: 1rem;
+      background: #141414;
+      padding: 1rem;
     }
-    .selector label {
-      display: flex;
-      align-items: center;
-      gap: 0.45rem;
-      padding: 0.65rem 0.85rem;
-      border: 1px solid #333;
-      border-radius: 999px;
-      background: #171717;
-      color: #d4d4d4;
-      cursor: pointer;
-      font-size: 0.95rem;
-    }
-    .selector input[type=radio] {
-      accent-color: #f0f0f0;
+    .tracker h2 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: 0.35rem;
     }
     input[type=number] {
       width: 100%;
@@ -79,30 +72,37 @@
 <body>
   <div class="container">
     <h1>AI Usage Tracker</h1>
-    <div class="selector" id="productSelector">
-      <label>
-        <input type="radio" name="product" value="claude" checked />
-        Claude
-      </label>
-      <label>
-        <input type="radio" name="product" value="chatgpt" />
-        ChatGPT
-      </label>
-    </div>
-    <p class="subtitle" id="subtitle">
+    <p class="page-subtitle">Compare Claude and ChatGPT at the same time with each product's own reset schedule.</p>
+    <p class="shared-status">
       <span class="label">Daily allocation:</span>
       <span class="value" id="dailyLabel"></span>
       ·
       <span class="label">Now:</span>
       <span class="value" id="nowLabel"></span>
     </p>
-    <input type="number" inputmode="decimal" placeholder="Enter usage (e.g. 20)" id="input" autofocus />
-    <p class="error-msg" id="error" style="display:none">Please enter a number, e.g. 20 or 20%</p>
-    <div class="result" id="result">
-      <div class="big" id="pct"></div>
-      <div class="label" id="lbl"></div>
-      <div class="target" id="target"></div>
-      <div class="meta" id="meta"></div>
+    <div class="trackers">
+      <section class="tracker" data-product="claude">
+        <h2>Claude</h2>
+        <input type="number" inputmode="decimal" placeholder="Enter Claude usage (e.g. 20)" data-role="input" autofocus />
+        <p class="error-msg" data-role="error" style="display:none">Please enter a number, e.g. 20 or 20%</p>
+        <div class="result" data-role="result">
+          <div class="big" data-role="pct"></div>
+          <div class="label" data-role="lbl"></div>
+          <div class="target" data-role="target"></div>
+          <div class="meta" data-role="meta"></div>
+        </div>
+      </section>
+      <section class="tracker" data-product="chatgpt">
+        <h2>ChatGPT</h2>
+        <input type="number" inputmode="decimal" placeholder="Enter ChatGPT usage (e.g. 20)" data-role="input" />
+        <p class="error-msg" data-role="error" style="display:none">Please enter a number, e.g. 20 or 20%</p>
+        <div class="result" data-role="result">
+          <div class="big" data-role="pct"></div>
+          <div class="label" data-role="lbl"></div>
+          <div class="target" data-role="target"></div>
+          <div class="meta" data-role="meta"></div>
+        </div>
+      </section>
     </div>
   </div>
 
@@ -127,16 +127,15 @@
       }
     };
     const state = {
-      currentTime: new Date(),
-      product: "claude"
+      currentTime: new Date()
     };
 
-    function activeProduct() {
-      return PRODUCTS[state.product];
+    function productConfig(productKey) {
+      return PRODUCTS[productKey];
     }
 
-    function chunkIndex(now = state.currentTime) {
-      const product = activeProduct();
+    function chunkIndex(productKey, now = state.currentTime) {
+      const product = productConfig(productKey);
       const resetMins = product.weekResetDay * 24 * 60 + product.weekResetHour * 60 + product.weekResetMinute;
       const nowMins = now.getDay() * 24 * 60 + now.getHours() * 60 + now.getMinutes();
       let elapsed = nowMins - resetMins;
@@ -144,8 +143,8 @@
       return Math.floor(elapsed / (24 * 60));
     }
 
-    function currentDailyCycleStart(now = state.currentTime) {
-      const product = activeProduct();
+    function currentDailyCycleStart(productKey, now = state.currentTime) {
+      const product = productConfig(productKey);
       const reset = new Date(now);
       reset.setHours(product.dailyResetHour, product.dailyResetMinute, 0, 0);
 
@@ -161,8 +160,8 @@
       return days[now.getDay()] + " " + now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     }
 
-    function timeUntilDailyReset(now = state.currentTime) {
-      const product = activeProduct();
+    function timeUntilDailyReset(productKey, now = state.currentTime) {
+      const product = productConfig(productKey);
       const reset = new Date(now);
       reset.setHours(product.dailyResetHour, product.dailyResetMinute, 0, 0);
 
@@ -185,27 +184,25 @@
 
     function syncCurrentTime() {
       state.currentTime = new Date();
+      document.getElementById("dailyLabel").textContent = `${DAILY.toFixed(1)}%`;
       document.getElementById("nowLabel").textContent = dayLabel(state.currentTime);
     }
 
-    const inp = document.getElementById("input");
-    const errEl = document.getElementById("error");
-    const resultEl = document.getElementById("result");
-    const pctEl = document.getElementById("pct");
-    const lblEl = document.getElementById("lbl");
-    const targetEl = document.getElementById("target");
-    const metaEl = document.getElementById("meta");
-    const dailyLabelEl = document.getElementById("dailyLabel");
+    function renderTracker(section) {
+      const productKey = section.dataset.product;
+      const inputEl = section.querySelector('[data-role="input"]');
+      const errorEl = section.querySelector('[data-role="error"]');
+      const resultEl = section.querySelector('[data-role="result"]');
+      const pctEl = section.querySelector('[data-role="pct"]');
+      const lblEl = section.querySelector('[data-role="lbl"]');
+      const targetEl = section.querySelector('[data-role="target"]');
+      const metaEl = section.querySelector('[data-role="meta"]');
 
-    function render() {
-      syncCurrentTime();
-      dailyLabelEl.textContent = `${DAILY.toFixed(1)}%`;
-
-      const raw = inp.value.trim();
+      const raw = inputEl.value.trim();
 
       if (raw === "") {
-        inp.classList.remove("error");
-        errEl.style.display = "none";
+        inputEl.classList.remove("error");
+        errorEl.style.display = "none";
         resultEl.classList.remove("visible");
         targetEl.innerHTML = "";
         return;
@@ -213,25 +210,25 @@
 
       const usage = parseFloat(raw);
       if (isNaN(usage)) {
-        inp.classList.add("error");
-        errEl.style.display = "block";
+        inputEl.classList.add("error");
+        errorEl.style.display = "block";
         resultEl.classList.remove("visible");
         targetEl.innerHTML = "";
         return;
       }
 
-      inp.classList.remove("error");
-      errEl.style.display = "none";
+      inputEl.classList.remove("error");
+      errorEl.style.display = "none";
 
-      const idx = chunkIndex(state.currentTime);
-      const dayStart = currentDailyCycleStart(state.currentTime);
-      const dayIdx = chunkIndex(dayStart);
+      const idx = chunkIndex(productKey, state.currentTime);
+      const dayStart = currentDailyCycleStart(productKey, state.currentTime);
+      const dayIdx = chunkIndex(productKey, dayStart);
       const usedToday = usage - dayIdx * DAILY;
       const remaining = Math.round((100 - (usedToday / DAILY * 100)) * 10) / 10;
       const targetUsage = ((idx + 0.9) * DAILY).toFixed(1);
       const over = remaining < 0;
       const color = remaining > 50 ? "#4ade80" : remaining > 0 ? "#facc15" : "#f87171";
-      const t = timeUntilDailyReset(state.currentTime);
+      const t = timeUntilDailyReset(productKey, state.currentTime);
       const hLabel = t.hours === 1 ? "hour" : "hours";
       const mLabel = t.minutes === 1 ? "minute" : "minutes";
       const resetLabel = formatResetTime(t.reset);
@@ -248,18 +245,16 @@
       resultEl.classList.add("visible");
     }
 
-    inp.addEventListener("input", render);
+    function renderAll() {
+      syncCurrentTime();
+      document.querySelectorAll(".tracker").forEach(renderTracker);
+    }
 
-    document.querySelectorAll('input[name="product"]').forEach((radio) => {
-      radio.addEventListener("change", (event) => {
-        state.product = event.target.value;
-        document.title = `${activeProduct().name} Usage Tracker`;
-        render();
-      });
+    document.querySelectorAll('[data-role="input"]').forEach((input) => {
+      input.addEventListener("input", renderAll);
     });
 
-    document.title = `${activeProduct().name} Usage Tracker`;
-    render();
+    renderAll();
   </script>
 </body>
 </html>
