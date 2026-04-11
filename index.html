@@ -176,7 +176,11 @@
       const hours = Math.floor(totalMinutes / 60);
       const minutes = totalMinutes % 60;
 
-      return { hours, minutes };
+      return { hours, minutes, reset };
+    }
+
+    function formatResetTime(date) {
+      return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
     }
 
     function syncCurrentTime() {
@@ -230,12 +234,13 @@
       const t = timeUntilDailyReset(state.currentTime);
       const hLabel = t.hours === 1 ? "hour" : "hours";
       const mLabel = t.minutes === 1 ? "minute" : "minutes";
+      const resetLabel = formatResetTime(t.reset);
 
       pctEl.textContent = Math.abs(remaining) + "%";
       pctEl.style.color = color;
       lblEl.textContent = over
-        ? `over budget for the next ${t.hours} ${hLabel} and ${t.minutes} ${mLabel}`
-        : `left for the next ${t.hours} ${hLabel} and ${t.minutes} ${mLabel}`;
+        ? `over budget for the next ${t.hours} ${hLabel} and ${t.minutes} ${mLabel} (${resetLabel})`
+        : `left for the next ${t.hours} ${hLabel} and ${t.minutes} ${mLabel} (${resetLabel})`;
       targetEl.innerHTML = `10% remaining happens at <span class="value">${targetUsage}%</span> weekly use`;
       metaEl.textContent = `Day ${idx + 1} of 7 · ${usedToday.toFixed(2)}% used this cycle`;
       resultEl.style.border = `1px solid ${color}44`;
