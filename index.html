@@ -234,6 +234,7 @@
 
   <script>
     const DAILY = 100 / 7;
+    const STORAGE_KEY = "ai-usage-tracker-values";
     const PRODUCTS = {
       claude: {
         name: "Claude",
@@ -369,6 +370,39 @@
       return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
     }
 
+    function loadStoredValues() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+      } catch {
+        return {};
+      }
+    }
+
+    function saveStoredValue(productKey, value) {
+      try {
+        const stored = loadStoredValues();
+        if (value === "") {
+          delete stored[productKey];
+        } else {
+          stored[productKey] = value;
+        }
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
+      } catch {
+        // Ignore storage failures so the tracker still works normally.
+      }
+    }
+
+    function hydrateInputs() {
+      const stored = loadStoredValues();
+      document.querySelectorAll(".tracker").forEach((section) => {
+        const productKey = section.dataset.product;
+        const inputEl = section.querySelector('[data-role="input"]');
+        if (typeof stored[productKey] === "string") {
+          inputEl.value = stored[productKey];
+        }
+      });
+    }
+
     function syncCurrentTime() {
       state.currentTime = new Date();
       document.getElementById("dailyLabel").textContent = `${DAILY.toFixed(1)}%`;
@@ -453,9 +487,14 @@
     }
 
     document.querySelectorAll('[data-role="input"]').forEach((input) => {
-      input.addEventListener("input", renderAll);
+      input.addEventListener("input", () => {
+        const productKey = input.closest(".tracker").dataset.product;
+        saveStoredValue(productKey, input.value);
+        renderAll();
+      });
     });
 
+    hydrateInputs();
     renderAll();
   </script>
 </body>
