@@ -64,9 +64,105 @@
     .result.visible { display: block; }
     .big { font-size: 3.5rem; font-weight: 800; line-height: 1; }
     .label { margin-top: 0.5rem; font-size: 1rem; color: #aaa; }
-    .meta { margin-top: 1rem; font-size: 0.8rem; color: #666; }
     .target { margin-top: 0.75rem; font-size: 0.9rem; color: #cfcfcf; }
     .target .value { color: #f0f0f0; font-weight: 700; }
+    .weekly-progress {
+      margin-top: 1rem;
+      text-align: left;
+    }
+    .weekly-progress-title {
+      margin-bottom: 0.45rem;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #d6d6d6;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .weekly-progress-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 0.45rem;
+      font-size: 0.78rem;
+      color: #a8a8a8;
+    }
+    .weekly-progress-labels {
+      display: flex;
+      gap: 0.9rem;
+      flex-wrap: wrap;
+    }
+    .weekly-progress-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .weekly-progress-label::before {
+      content: "";
+      width: 0.55rem;
+      height: 0.55rem;
+      border-radius: 999px;
+      background: currentColor;
+      opacity: 0.95;
+    }
+    .weekly-progress-label.expected { color: #38bdf8; }
+    .weekly-progress-label.actual { color: #f97316; }
+    .weekly-progress-track {
+      position: relative;
+      height: 1rem;
+      border-radius: 999px;
+      overflow: hidden;
+      background:
+        repeating-linear-gradient(
+          to right,
+          #1c1c1c 0,
+          #1c1c1c calc((100% / 7) - 2px),
+          #2d2d2d calc((100% / 7) - 2px),
+          #2d2d2d calc(100% / 7)
+        );
+      border: 1px solid #2c2c2c;
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.45);
+    }
+    .weekly-progress-fill {
+      position: absolute;
+      left: 0;
+      border-radius: 999px;
+    }
+    .weekly-progress-fill.expected {
+      top: 0.18rem;
+      bottom: 0.18rem;
+      background: repeating-linear-gradient(
+        135deg,
+        rgba(56, 189, 248, 0.34) 0,
+        rgba(56, 189, 248, 0.34) 6px,
+        rgba(56, 189, 248, 0.12) 6px,
+        rgba(56, 189, 248, 0.12) 12px
+      );
+      border: 1px solid rgba(56, 189, 248, 0.85);
+    }
+    .weekly-progress-fill.actual {
+      top: 0.32rem;
+      bottom: 0.32rem;
+      background: #f97316;
+    }
+    .weekly-progress-marker {
+      position: absolute;
+      top: 0.08rem;
+      bottom: 0.08rem;
+      width: 2px;
+      border-radius: 999px;
+      background: #38bdf8;
+      box-shadow: 0 0 0 1px rgba(15, 15, 15, 0.65);
+    }
+    .weekly-progress-days {
+      display: grid;
+      grid-template-columns: var(--label-columns, repeat(7, 1fr));
+      gap: 0.35rem;
+      margin-top: 0.45rem;
+      font-size: 0.68rem;
+      color: #777;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
   </style>
 </head>
 <body>
@@ -89,7 +185,22 @@
           <div class="big" data-role="pct"></div>
           <div class="label" data-role="lbl"></div>
           <div class="target" data-role="target"></div>
-          <div class="meta" data-role="meta"></div>
+          <div class="weekly-progress" data-role="progress">
+            <div class="weekly-progress-title">Weekly Pace</div>
+            <div class="weekly-progress-header">
+              <div class="weekly-progress-labels">
+                <span class="weekly-progress-label expected">Expected by now</span>
+                <span class="weekly-progress-label actual">Actual</span>
+              </div>
+              <div data-role="progressSummary"></div>
+            </div>
+            <div class="weekly-progress-track">
+              <div class="weekly-progress-fill expected" data-role="expectedFill"></div>
+              <div class="weekly-progress-fill actual" data-role="actualFill"></div>
+              <div class="weekly-progress-marker" data-role="expectedMarker"></div>
+            </div>
+            <div class="weekly-progress-days" data-role="progressDays" aria-hidden="true"></div>
+          </div>
         </div>
       </section>
       <section class="tracker" data-product="chatgpt">
@@ -100,7 +211,22 @@
           <div class="big" data-role="pct"></div>
           <div class="label" data-role="lbl"></div>
           <div class="target" data-role="target"></div>
-          <div class="meta" data-role="meta"></div>
+          <div class="weekly-progress" data-role="progress">
+            <div class="weekly-progress-title">Weekly Pace</div>
+            <div class="weekly-progress-header">
+              <div class="weekly-progress-labels">
+                <span class="weekly-progress-label expected">Expected by now</span>
+                <span class="weekly-progress-label actual">Actual</span>
+              </div>
+              <div data-role="progressSummary"></div>
+            </div>
+            <div class="weekly-progress-track">
+              <div class="weekly-progress-fill expected" data-role="expectedFill"></div>
+              <div class="weekly-progress-fill actual" data-role="actualFill"></div>
+              <div class="weekly-progress-marker" data-role="expectedMarker"></div>
+            </div>
+            <div class="weekly-progress-days" data-role="progressDays" aria-hidden="true"></div>
+          </div>
         </div>
       </section>
     </div>
@@ -135,12 +261,24 @@
     }
 
     function chunkIndex(productKey, now = state.currentTime) {
+      const elapsed = weekElapsedMinutes(productKey, now);
+      return Math.floor(elapsed / (24 * 60));
+    }
+
+    function weekElapsedMinutes(productKey, now = state.currentTime) {
       const product = productConfig(productKey);
       const resetMins = product.weekResetDay * 24 * 60 + product.weekResetHour * 60 + product.weekResetMinute;
       const nowMins = now.getDay() * 24 * 60 + now.getHours() * 60 + now.getMinutes();
       let elapsed = nowMins - resetMins;
       if (elapsed < 0) elapsed += 7 * 24 * 60;
-      return Math.floor(elapsed / (24 * 60));
+      return elapsed;
+    }
+
+    function weeklyProgress(productKey, now = state.currentTime) {
+      const elapsedMinutes = weekElapsedMinutes(productKey, now);
+      const elapsedDays = elapsedMinutes / (24 * 60);
+      const expectedUsage = (elapsedMinutes / (7 * 24 * 60)) * 100;
+      return { elapsedDays, expectedUsage };
     }
 
     function currentDailyCycleStart(productKey, now = state.currentTime) {
@@ -153,6 +291,55 @@
       }
 
       return reset;
+    }
+
+    function weeklySegments(productKey) {
+      if (productKey === "claude") {
+        return [
+          { label: "Fri PM", hours: 10 },
+          { label: "Sat", hours: 24 },
+          { label: "Sun", hours: 24 },
+          { label: "Mon", hours: 24 },
+          { label: "Tue", hours: 24 },
+          { label: "Wed", hours: 24 },
+          { label: "Thu", hours: 24 },
+          { label: "Fri AM", hours: 14 }
+        ];
+      }
+
+      return [
+        { label: "Fri", hours: 24 },
+        { label: "Sat", hours: 24 },
+        { label: "Sun", hours: 24 },
+        { label: "Mon", hours: 24 },
+        { label: "Tue", hours: 24 },
+        { label: "Wed", hours: 24 },
+        { label: "Thu", hours: 24 }
+      ];
+    }
+
+    function segmentBackground(productKey) {
+      const segments = weeklySegments(productKey);
+      let elapsed = 0;
+      const parts = [];
+
+      segments.forEach((segment, index) => {
+        const start = (elapsed / 168) * 100;
+        elapsed += segment.hours;
+        const end = (elapsed / 168) * 100;
+        const lineStart = Math.max(start, end - (2 / 560) * 100);
+
+        parts.push(`#1c1c1c ${start}%`);
+        parts.push(`#1c1c1c ${lineStart}%`);
+        if (index < segments.length - 1) {
+          parts.push(`#2d2d2d ${lineStart}%`);
+          parts.push(`#2d2d2d ${end}%`);
+        } else {
+          parts.push(`#1c1c1c ${end}%`);
+        }
+      });
+
+      return `linear-gradient(to right, ${parts.join(", ")})`;
     }
 
     function dayLabel(now = state.currentTime) {
@@ -196,7 +383,13 @@
       const pctEl = section.querySelector('[data-role="pct"]');
       const lblEl = section.querySelector('[data-role="lbl"]');
       const targetEl = section.querySelector('[data-role="target"]');
-      const metaEl = section.querySelector('[data-role="meta"]');
+      const progressSummaryEl = section.querySelector('[data-role="progressSummary"]');
+      const expectedFillEl = section.querySelector('[data-role="expectedFill"]');
+      const actualFillEl = section.querySelector('[data-role="actualFill"]');
+      const expectedMarkerEl = section.querySelector('[data-role="expectedMarker"]');
+      const progressEl = section.querySelector('[data-role="progress"]');
+      const progressDaysEl = section.querySelector('[data-role="progressDays"]');
+      const trackEl = section.querySelector('.weekly-progress-track');
 
       const raw = inputEl.value.trim();
 
@@ -221,11 +414,12 @@
       errorEl.style.display = "none";
 
       const idx = chunkIndex(productKey, state.currentTime);
+      const weekly = weeklyProgress(productKey, state.currentTime);
       const dayStart = currentDailyCycleStart(productKey, state.currentTime);
       const dayIdx = chunkIndex(productKey, dayStart);
       const usedToday = usage - dayIdx * DAILY;
       const remaining = Math.round((100 - (usedToday / DAILY * 100)) * 10) / 10;
-      const targetUsage = ((idx + 0.9) * DAILY).toFixed(1);
+      const targetUsage = (((dayIdx + 1) * DAILY) - (0.1 * DAILY)).toFixed(1);
       const over = remaining < 0;
       const color = remaining > 50 ? "#4ade80" : remaining > 0 ? "#facc15" : "#f87171";
       const t = timeUntilDailyReset(productKey, state.currentTime);
@@ -236,10 +430,18 @@
       pctEl.textContent = Math.abs(remaining) + "%";
       pctEl.style.color = color;
       lblEl.textContent = over
-        ? `over budget for the next ${t.hours} ${hLabel} and ${t.minutes} ${mLabel} (${resetLabel})`
-        : `left for the next ${t.hours} ${hLabel} and ${t.minutes} ${mLabel} (${resetLabel})`;
-      targetEl.innerHTML = `10% remaining happens at <span class="value">${targetUsage}%</span> weekly use`;
-      metaEl.textContent = `Day ${idx + 1} of 7 · ${usedToday.toFixed(2)}% used this cycle`;
+        ? `over today's budget for the next ${t.hours} ${hLabel} and ${t.minutes} ${mLabel} (${resetLabel})`
+        : `left in today's budget for the next ${t.hours} ${hLabel} and ${t.minutes} ${mLabel} (${resetLabel})`;
+      progressSummaryEl.textContent = `${weekly.elapsedDays.toFixed(1)} of 7 days`;
+      const expectedWidth = Math.max(0, Math.min(weekly.expectedUsage, 100));
+      expectedFillEl.style.width = `${expectedWidth}%`;
+      actualFillEl.style.width = `${Math.max(0, Math.min(usage, 100))}%`;
+      expectedMarkerEl.style.left = `calc(${expectedWidth}% - 1px)`;
+      targetEl.innerHTML = `10% of today's budget remains at <span class="value">${targetUsage}%</span> weekly use`;
+      const segments = weeklySegments(productKey);
+      progressEl.style.setProperty("--label-columns", segments.map((segment) => `${segment.hours}fr`).join(" "));
+      progressDaysEl.innerHTML = segments.map((segment) => `<span>${segment.label}</span>`).join("");
+      trackEl.style.background = segmentBackground(productKey);
       resultEl.style.border = `1px solid ${color}44`;
       resultEl.style.background = `${color}11`;
       resultEl.classList.add("visible");
