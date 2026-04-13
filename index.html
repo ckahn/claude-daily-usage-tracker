@@ -64,6 +64,10 @@
     .result.visible { display: block; }
     .big { font-size: 3.5rem; font-weight: 800; line-height: 1; }
     .label { margin-top: 0.5rem; font-size: 1rem; color: #aaa; }
+    .label .duration {
+      color: #f0f0f0;
+      font-weight: 700;
+    }
     .target { margin-top: 0.75rem; font-size: 0.9rem; color: #cfcfcf; }
     .target .value { color: #f0f0f0; font-weight: 700; }
     .weekly-progress {
@@ -463,9 +467,9 @@
 
       pctEl.textContent = Math.abs(remaining) + "%";
       pctEl.style.color = color;
-      lblEl.textContent = over
-        ? `over today's budget for the next ${t.hours} ${hLabel} and ${t.minutes} ${mLabel} (${resetLabel})`
-        : `left in today's budget for the next ${t.hours} ${hLabel} and ${t.minutes} ${mLabel} (${resetLabel})`;
+      lblEl.innerHTML = over
+        ? `over today's budget for the next <span class="duration">${t.hours} ${hLabel} and ${t.minutes} ${mLabel}</span> (${resetLabel})`
+        : `left in today's budget for the next <span class="duration">${t.hours} ${hLabel} and ${t.minutes} ${mLabel}</span> (${resetLabel})`;
       progressSummaryEl.textContent = `${weekly.elapsedDays.toFixed(1)} of 7 days`;
       const expectedWidth = Math.max(0, Math.min(weekly.expectedUsage, 100));
       expectedFillEl.style.width = `${expectedWidth}%`;
