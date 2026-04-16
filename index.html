@@ -242,8 +242,8 @@
     const PRODUCTS = {
       claude: {
         name: "Claude",
-        weekResetDay: 5,
-        weekResetHour: 14,
+        weekResetDay: 4,
+        weekResetHour: 12,
         weekResetMinute: 0,
         dailyResetHour: 14,
         dailyResetMinute: 0
@@ -301,14 +301,14 @@
     function weeklySegments(productKey) {
       if (productKey === "claude") {
         return [
-          { label: "Fri PM", hours: 10 },
+          { label: "Thu PM", hours: 12 },
+          { label: "Fri", hours: 24 },
           { label: "Sat", hours: 24 },
           { label: "Sun", hours: 24 },
           { label: "Mon", hours: 24 },
           { label: "Tue", hours: 24 },
           { label: "Wed", hours: 24 },
-          { label: "Thu", hours: 24 },
-          { label: "Fri AM", hours: 14 }
+          { label: "Thu AM", hours: 12 }
         ];
       }
 
