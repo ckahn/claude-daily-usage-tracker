@@ -54,6 +54,34 @@
     }
     input.error { border-color: #f87171; }
     .error-msg { margin-top: 0.4rem; color: #f87171; font-size: 0.85rem; }
+    .reset-controls {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.75rem;
+      margin-top: 0.9rem;
+    }
+    .reset-field {
+      display: grid;
+      gap: 0.35rem;
+    }
+    .reset-field label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #949494;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    select,
+    input[type=time] {
+      width: 100%;
+      padding: 0.7rem 0.75rem;
+      border-radius: 0.5rem;
+      border: 1px solid #333;
+      background: #1a1a1a;
+      color: #f0f0f0;
+      font-size: 0.95rem;
+      outline: none;
+    }
     .result {
       margin-top: 1.5rem;
       padding: 1.5rem;
@@ -167,6 +195,11 @@
       text-transform: uppercase;
       letter-spacing: 0.04em;
     }
+    @media (max-width: 520px) {
+      .reset-controls {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 <body>
@@ -185,6 +218,24 @@
         <h2>Claude</h2>
         <input type="number" inputmode="decimal" placeholder="Enter Claude usage (e.g. 20)" data-role="input" autofocus />
         <p class="error-msg" data-role="error" style="display:none">Please enter a number, e.g. 20 or 20%</p>
+        <div class="reset-controls">
+          <div class="reset-field">
+            <label for="claude-reset-day">Reset day</label>
+            <select id="claude-reset-day" data-role="reset-day">
+              <option value="0">Sunday</option>
+              <option value="1">Monday</option>
+              <option value="2">Tuesday</option>
+              <option value="3">Wednesday</option>
+              <option value="4">Thursday</option>
+              <option value="5">Friday</option>
+              <option value="6">Saturday</option>
+            </select>
+          </div>
+          <div class="reset-field">
+            <label for="claude-reset-time">Reset time</label>
+            <input id="claude-reset-time" type="time" data-role="reset-time" />
+          </div>
+        </div>
         <div class="result" data-role="result">
           <div class="big" data-role="pct"></div>
           <div class="label" data-role="lbl"></div>
@@ -211,6 +262,24 @@
         <h2>ChatGPT</h2>
         <input type="number" inputmode="decimal" placeholder="Enter ChatGPT usage (e.g. 20)" data-role="input" />
         <p class="error-msg" data-role="error" style="display:none">Please enter a number, e.g. 20 or 20%</p>
+        <div class="reset-controls">
+          <div class="reset-field">
+            <label for="chatgpt-reset-day">Reset day</label>
+            <select id="chatgpt-reset-day" data-role="reset-day">
+              <option value="0">Sunday</option>
+              <option value="1">Monday</option>
+              <option value="2">Tuesday</option>
+              <option value="3">Wednesday</option>
+              <option value="4">Thursday</option>
+              <option value="5">Friday</option>
+              <option value="6">Saturday</option>
+            </select>
+          </div>
+          <div class="reset-field">
+            <label for="chatgpt-reset-time">Reset time</label>
+            <input id="chatgpt-reset-time" type="time" data-role="reset-time" />
+          </div>
+        </div>
         <div class="result" data-role="result">
           <div class="big" data-role="pct"></div>
           <div class="label" data-role="lbl"></div>
@@ -244,19 +313,16 @@
         name: "Claude",
         weekResetDay: 4,
         weekResetHour: 12,
-        weekResetMinute: 0,
-        dailyResetHour: 12,
-        dailyResetMinute: 0
+        weekResetMinute: 0
       },
       chatgpt: {
         name: "ChatGPT",
         weekResetDay: 5,
         weekResetHour: 0,
-        weekResetMinute: 0,
-        dailyResetHour: 0,
-        dailyResetMinute: 0
+        weekResetMinute: 0
       }
     };
+    const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
     const state = {
       currentTime: new Date()
     };
@@ -289,7 +355,7 @@
     function currentDailyCycleStart(productKey, now = state.currentTime) {
       const product = productConfig(productKey);
       const reset = new Date(now);
-      reset.setHours(product.dailyResetHour, product.dailyResetMinute, 0, 0);
+      reset.setHours(product.weekResetHour, product.weekResetMinute, 0, 0);
 
       if (now < reset) {
         reset.setDate(reset.getDate() - 1);
@@ -298,29 +364,46 @@
       return reset;
     }
 
+    function formatTimeInput(hour, minute) {
+      return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+    }
+
+    function shortDayName(dayIndex) {
+      return DAYS[dayIndex].slice(0, 3);
+    }
+
     function weeklySegments(productKey) {
-      if (productKey === "claude") {
-        return [
-          { label: "Thu PM", hours: 12 },
-          { label: "Fri", hours: 24 },
-          { label: "Sat", hours: 24 },
-          { label: "Sun", hours: 24 },
-          { label: "Mon", hours: 24 },
-          { label: "Tue", hours: 24 },
-          { label: "Wed", hours: 24 },
-          { label: "Thu AM", hours: 12 }
-        ];
+      const product = productConfig(productKey);
+      const resetMinutes = product.weekResetHour * 60 + product.weekResetMinute;
+      const segments = [];
+
+      if (resetMinutes > 0) {
+        segments.push({
+          label: `${shortDayName(product.weekResetDay)} ${product.weekResetHour < 12 ? "AM" : "PM"}`,
+          hours: (24 * 60 - resetMinutes) / 60
+        });
       }
 
-      return [
-        { label: "Fri", hours: 24 },
-        { label: "Sat", hours: 24 },
-        { label: "Sun", hours: 24 },
-        { label: "Mon", hours: 24 },
-        { label: "Tue", hours: 24 },
-        { label: "Wed", hours: 24 },
-        { label: "Thu", hours: 24 }
-      ];
+      for (let offset = 1; offset < 7; offset += 1) {
+        segments.push({
+          label: shortDayName((product.weekResetDay + offset) % 7),
+          hours: 24
+        });
+      }
+
+      if (resetMinutes > 0) {
+        segments.push({
+          label: `${shortDayName(product.weekResetDay)} ${product.weekResetHour < 12 ? "AM" : "PM"}`,
+          hours: resetMinutes / 60
+        });
+      } else {
+        segments.unshift({
+          label: shortDayName(product.weekResetDay),
+          hours: 24
+        });
+      }
+
+      return segments;
     }
 
     function segmentBackground(productKey) {
@@ -348,14 +431,13 @@
     }
 
     function dayLabel(now = state.currentTime) {
-      const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-      return days[now.getDay()] + " " + now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      return DAYS[now.getDay()] + " " + now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     }
 
     function timeUntilDailyReset(productKey, now = state.currentTime) {
       const product = productConfig(productKey);
       const reset = new Date(now);
-      reset.setHours(product.dailyResetHour, product.dailyResetMinute, 0, 0);
+      reset.setHours(product.weekResetHour, product.weekResetMinute, 0, 0);
 
       if (now >= reset) {
         reset.setDate(reset.getDate() + 1);
@@ -382,14 +464,13 @@
       }
     }
 
-    function saveStoredValue(productKey, value) {
+    function saveStoredState(productKey, nextValues) {
       try {
         const stored = loadStoredValues();
-        if (value === "") {
-          delete stored[productKey];
-        } else {
-          stored[productKey] = value;
-        }
+        const current = typeof stored[productKey] === "object" && stored[productKey] !== null
+          ? stored[productKey]
+          : {};
+        stored[productKey] = { ...current, ...nextValues };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
       } catch {
         // Ignore storage failures so the tracker still works normally.
@@ -401,9 +482,30 @@
       document.querySelectorAll(".tracker").forEach((section) => {
         const productKey = section.dataset.product;
         const inputEl = section.querySelector('[data-role="input"]');
+        const resetDayEl = section.querySelector('[data-role="reset-day"]');
+        const resetTimeEl = section.querySelector('[data-role="reset-time"]');
+        const product = productConfig(productKey);
+        const storedProduct = typeof stored[productKey] === "object" && stored[productKey] !== null
+          ? stored[productKey]
+          : {};
+
         if (typeof stored[productKey] === "string") {
           inputEl.value = stored[productKey];
+        } else if (typeof storedProduct.usage === "string") {
+          inputEl.value = storedProduct.usage;
         }
+
+        if (Number.isInteger(storedProduct.weekResetDay)) {
+          product.weekResetDay = storedProduct.weekResetDay;
+        }
+        if (typeof storedProduct.weekResetTime === "string" && /^\d{2}:\d{2}$/.test(storedProduct.weekResetTime)) {
+          const [hour, minute] = storedProduct.weekResetTime.split(":").map(Number);
+          product.weekResetHour = hour;
+          product.weekResetMinute = minute;
+        }
+
+        resetDayEl.value = String(product.weekResetDay);
+        resetTimeEl.value = formatTimeInput(product.weekResetHour, product.weekResetMinute);
       });
     }
 
@@ -493,7 +595,42 @@
     document.querySelectorAll('[data-role="input"]').forEach((input) => {
       input.addEventListener("input", () => {
         const productKey = input.closest(".tracker").dataset.product;
-        saveStoredValue(productKey, input.value);
+        saveStoredState(productKey, { usage: input.value });
+        renderAll();
+      });
+    });
+
+    document.querySelectorAll('[data-role="reset-day"]').forEach((select) => {
+      select.addEventListener("input", () => {
+        const section = select.closest(".tracker");
+        const productKey = section.dataset.product;
+        const product = productConfig(productKey);
+        product.weekResetDay = parseInt(select.value, 10);
+        saveStoredState(productKey, {
+          weekResetDay: product.weekResetDay,
+          weekResetTime: formatTimeInput(product.weekResetHour, product.weekResetMinute)
+        });
+        renderAll();
+      });
+    });
+
+    document.querySelectorAll('[data-role="reset-time"]').forEach((input) => {
+      input.addEventListener("input", () => {
+        const section = input.closest(".tracker");
+        const productKey = section.dataset.product;
+        const product = productConfig(productKey);
+        const [hour, minute] = input.value.split(":").map(Number);
+
+        if (!Number.isInteger(hour) || !Number.isInteger(minute)) {
+          return;
+        }
+
+        product.weekResetHour = hour;
+        product.weekResetMinute = minute;
+        saveStoredState(productKey, {
+          weekResetDay: product.weekResetDay,
+          weekResetTime: formatTimeInput(hour, minute)
+        });
         renderAll();
       });
     });
